@@ -10153,16 +10153,26 @@ class mydsp : public dsp {
  public:
 	
 	FAUSTFLOAT fEntry0;
-	float fRec0[2];
-	int IOTA0;
-	float fVec0[1024];
 	FAUSTFLOAT fEntry1;
+	FAUSTFLOAT fEntry2;
+	float fRec0[2];
+	FAUSTFLOAT fEntry3;
+	int IOTA0;
+	float fVec0[4096];
+	FAUSTFLOAT fEntry4;
+	float fVec1[4096];
+	float fRec1[2];
+	float fRec2[2];
+	float fRec3[2];
 	int fSampleRate;
 	
  public:
 	mydsp() {}
 
 	void metadata(Meta* m) { 
+		m->declare("basics.lib/name", "Faust Basic Element Library");
+		m->declare("basics.lib/tabulateNd", "Copyright (C) 2023 Bart Brouns <bart@magnetophon.nl>");
+		m->declare("basics.lib/version", "1.12.0");
 		m->declare("compile_options", "-a /usr/local/share/faust/teensy/teensy.cpp -lang cpp -i -ct 1 -es 1 -mcd 16 -mdd 1024 -mdy 33 -uim -single -ftz 0");
 		m->declare("delays.lib/name", "Faust Delay Library");
 		m->declare("delays.lib/version", "1.1.0");
@@ -10190,8 +10200,11 @@ class mydsp : public dsp {
 	}
 	
 	virtual void instanceResetUserInterface() {
-		fEntry0 = FAUSTFLOAT(0.0f);
-		fEntry1 = FAUSTFLOAT(0.5f);
+		fEntry0 = FAUSTFLOAT(1.0f);
+		fEntry1 = FAUSTFLOAT(1.0f);
+		fEntry2 = FAUSTFLOAT(1e+02f);
+		fEntry3 = FAUSTFLOAT(1e+01f);
+		fEntry4 = FAUSTFLOAT(0.5f);
 	}
 	
 	virtual void instanceClear() {
@@ -10199,8 +10212,20 @@ class mydsp : public dsp {
 			fRec0[l0] = 0.0f;
 		}
 		IOTA0 = 0;
-		for (int l1 = 0; l1 < 1024; l1 = l1 + 1) {
+		for (int l1 = 0; l1 < 4096; l1 = l1 + 1) {
 			fVec0[l1] = 0.0f;
+		}
+		for (int l2 = 0; l2 < 4096; l2 = l2 + 1) {
+			fVec1[l2] = 0.0f;
+		}
+		for (int l3 = 0; l3 < 2; l3 = l3 + 1) {
+			fRec1[l3] = 0.0f;
+		}
+		for (int l4 = 0; l4 < 2; l4 = l4 + 1) {
+			fRec2[l4] = 0.0f;
+		}
+		for (int l5 = 0; l5 < 2; l5 = l5 + 1) {
+			fRec3[l5] = 0.0f;
 		}
 	}
 	
@@ -10225,29 +10250,69 @@ class mydsp : public dsp {
 	
 	virtual void buildUserInterface(UI* ui_interface) {
 		ui_interface->openVerticalBox("Shifter");
-		ui_interface->addNumEntry("gain", &fEntry1, FAUSTFLOAT(0.5f), FAUSTFLOAT(0.0f), FAUSTFLOAT(1.0f), FAUSTFLOAT(0.01f));
-		ui_interface->addNumEntry("shift", &fEntry0, FAUSTFLOAT(0.0f), FAUSTFLOAT(-12.0f), FAUSTFLOAT(12.0f), FAUSTFLOAT(0.001f));
+		ui_interface->addNumEntry("gain", &fEntry4, FAUSTFLOAT(0.5f), FAUSTFLOAT(0.0f), FAUSTFLOAT(1.0f), FAUSTFLOAT(0.01f));
+		ui_interface->addNumEntry("mode", &fEntry0, FAUSTFLOAT(1.0f), FAUSTFLOAT(1.0f), FAUSTFLOAT(3.0f), FAUSTFLOAT(1.0f));
+		ui_interface->addNumEntry("shift", &fEntry1, FAUSTFLOAT(1.0f), FAUSTFLOAT(-2e+01f), FAUSTFLOAT(2e+01f), FAUSTFLOAT(0.001f));
+		ui_interface->addNumEntry("window", &fEntry2, FAUSTFLOAT(1e+02f), FAUSTFLOAT(1e+01f), FAUSTFLOAT(1e+04f), FAUSTFLOAT(1e+01f));
+		ui_interface->addNumEntry("xfade", &fEntry3, FAUSTFLOAT(1e+01f), FAUSTFLOAT(1.0f), FAUSTFLOAT(1e+03f), FAUSTFLOAT(1.0f));
 		ui_interface->closeBox();
 	}
 	
 	virtual void compute(int count, FAUSTFLOAT** RESTRICT inputs, FAUSTFLOAT** RESTRICT outputs) {
 		FAUSTFLOAT* input0 = inputs[0];
 		FAUSTFLOAT* output0 = outputs[0];
-		float fSlow0 = std::pow(2.0f, 0.083333336f * float(fEntry0));
-		float fSlow1 = float(fEntry1);
+		float fSlow0 = float(fEntry0);
+		int iSlow1 = fSlow0 == 3.0f;
+		int iSlow2 = fSlow0 == 2.0f;
+		float fSlow3 = std::pow(2.0f, 0.083333336f * float(fEntry1));
+		float fSlow4 = float(fEntry2);
+		float fSlow5 = 1.0f / float(fEntry3);
+		float fSlow6 = float(fEntry4);
 		for (int i0 = 0; i0 < count; i0 = i0 + 1) {
-			fRec0[0] = std::fmod(fRec0[1] + 1001.0f - fSlow0, 1e+03f);
-			float fTemp0 = std::min<float>(0.1f * fRec0[0], 1.0f);
-			float fTemp1 = fRec0[0] + 1e+03f;
-			float fTemp2 = std::floor(fTemp1);
-			float fTemp3 = float(input0[i0]);
-			fVec0[IOTA0 & 1023] = fTemp3;
-			int iTemp4 = int(fTemp1);
-			int iTemp5 = int(fRec0[0]);
-			float fTemp6 = std::floor(fRec0[0]);
-			output0[i0] = FAUSTFLOAT(fSlow1 * ((fVec0[(IOTA0 - std::min<int>(1001, std::max<int>(0, iTemp5))) & 1023] * (fTemp6 + (1.0f - fRec0[0])) + (fRec0[0] - fTemp6) * fVec0[(IOTA0 - std::min<int>(1001, std::max<int>(0, iTemp5 + 1))) & 1023]) * fTemp0 + (fVec0[(IOTA0 - std::min<int>(1001, std::max<int>(0, iTemp4))) & 1023] * (fTemp2 + (-999.0f - fRec0[0])) + fVec0[(IOTA0 - std::min<int>(1001, std::max<int>(0, iTemp4 + 1))) & 1023] * (fRec0[0] + (1e+03f - fTemp2))) * (1.0f - fTemp0)));
+			fRec0[0] = std::fmod(fSlow4 + (fRec0[1] + 1.0f - fSlow3), fSlow4);
+			float fTemp0 = std::min<float>(fSlow5 * fRec0[0], 1.0f);
+			float fTemp1 = float(input0[i0]);
+			fVec0[IOTA0 & 4095] = fTemp1;
+			float fTemp2 = fSlow4 + fRec0[0];
+			int iTemp3 = int(fTemp2);
+			float fTemp4 = std::floor(fTemp2);
+			float fTemp5 = 1.0f - fRec0[0];
+			int iTemp6 = int(fRec0[0]);
+			float fTemp7 = std::floor(fRec0[0]);
+			float fTemp8 = fSlow6 * ((fVec0[(IOTA0 - std::min<int>(3001, std::max<int>(0, iTemp6))) & 4095] * (fTemp7 + fTemp5) + (fRec0[0] - fTemp7) * fVec0[(IOTA0 - std::min<int>(3001, std::max<int>(0, iTemp6 + 1))) & 4095]) * fTemp0 + (fVec0[(IOTA0 - std::min<int>(3001, std::max<int>(0, iTemp3))) & 4095] * (fTemp4 + fTemp5 - fSlow4) + (fSlow4 + (fRec0[0] - fTemp4)) * fVec0[(IOTA0 - std::min<int>(3001, std::max<int>(0, iTemp3 + 1))) & 4095]) * (1.0f - fTemp0));
+			fVec1[IOTA0 & 4095] = fTemp8;
+			fRec1[0] = std::fmod(fSlow4 + fRec1[1] + 0.33258006f, fSlow4);
+			float fTemp9 = std::min<float>(fSlow5 * fRec1[0], 1.0f);
+			int iTemp10 = int(fRec1[0]);
+			float fTemp11 = std::floor(fRec1[0]);
+			float fTemp12 = 1.0f - fRec1[0];
+			float fTemp13 = (fVec1[(IOTA0 - std::min<int>(3001, std::max<int>(0, iTemp10))) & 4095] * (fTemp11 + fTemp12) + (fRec1[0] - fTemp11) * fVec1[(IOTA0 - std::min<int>(3001, std::max<int>(0, iTemp10 + 1))) & 4095]) * fTemp9;
+			fRec2[0] = std::fmod(fSlow4 + fRec2[1] + 0.20629947f, fSlow4);
+			float fTemp14 = std::min<float>(fSlow5 * fRec2[0], 1.0f);
+			float fTemp15 = fSlow4 + fRec2[0];
+			int iTemp16 = int(fTemp15);
+			float fTemp17 = std::floor(fTemp15);
+			float fTemp18 = 1.0f - fRec2[0];
+			int iTemp19 = int(fRec2[0]);
+			float fTemp20 = std::floor(fRec2[0]);
+			float fTemp21 = fSlow4 + fRec1[0];
+			int iTemp22 = int(fTemp21);
+			float fTemp23 = std::floor(fTemp21);
+			float fTemp24 = (fVec1[(IOTA0 - std::min<int>(3001, std::max<int>(0, iTemp22))) & 4095] * (fTemp23 + fTemp12 - fSlow4) + (fSlow4 + (fRec1[0] - fTemp23)) * fVec1[(IOTA0 - std::min<int>(3001, std::max<int>(0, iTemp22 + 1))) & 4095]) * (1.0f - fTemp9);
+			fRec3[0] = std::fmod(fSlow4 + fRec3[1] + 0.15910359f, fSlow4);
+			float fTemp25 = std::min<float>(fSlow5 * fRec3[0], 1.0f);
+			int iTemp26 = int(fRec3[0]);
+			float fTemp27 = std::floor(fRec3[0]);
+			float fTemp28 = 1.0f - fRec3[0];
+			float fTemp29 = fSlow4 + fRec3[0];
+			int iTemp30 = int(fTemp29);
+			float fTemp31 = std::floor(fTemp29);
+			output0[i0] = FAUSTFLOAT(((iSlow1) ? fTemp8 + 0.5f * ((fVec1[(IOTA0 - std::min<int>(3001, std::max<int>(0, iTemp30))) & 4095] * (fTemp31 + fTemp28 - fSlow4) + (fSlow4 + (fRec3[0] - fTemp31)) * fVec1[(IOTA0 - std::min<int>(3001, std::max<int>(0, iTemp30 + 1))) & 4095]) * (1.0f - fTemp25) + fTemp13 + fTemp24 + (fVec1[(IOTA0 - std::min<int>(3001, std::max<int>(0, iTemp26))) & 4095] * (fTemp27 + fTemp28) + (fRec3[0] - fTemp27) * fVec1[(IOTA0 - std::min<int>(3001, std::max<int>(0, iTemp26 + 1))) & 4095]) * fTemp25) : ((iSlow2) ? fTemp8 + 0.5f * (fTemp24 + (fVec1[(IOTA0 - std::min<int>(3001, std::max<int>(0, iTemp19))) & 4095] * (fTemp20 + fTemp18) + (fRec2[0] - fTemp20) * fVec1[(IOTA0 - std::min<int>(3001, std::max<int>(0, iTemp19 + 1))) & 4095]) * fTemp14 + (fVec1[(IOTA0 - std::min<int>(3001, std::max<int>(0, iTemp16))) & 4095] * (fTemp17 + fTemp18 - fSlow4) + (fSlow4 + (fRec2[0] - fTemp17)) * fVec1[(IOTA0 - std::min<int>(3001, std::max<int>(0, iTemp16 + 1))) & 4095]) * (1.0f - fTemp14) + fTemp13) : fTemp8)));
 			fRec0[1] = fRec0[0];
 			IOTA0 = IOTA0 + 1;
+			fRec1[1] = fRec1[0];
+			fRec2[1] = fRec2[0];
+			fRec3[1] = fRec3[0];
 		}
 	}
 
@@ -10260,15 +10325,21 @@ class mydsp : public dsp {
 	#define FAUST_COMPILATION_OPIONS "-a /usr/local/share/faust/teensy/teensy.cpp -lang cpp -i -ct 1 -es 1 -mcd 16 -mdd 1024 -mdy 33 -uim -single -ftz 0"
 	#define FAUST_INPUTS 1
 	#define FAUST_OUTPUTS 1
-	#define FAUST_ACTIVES 2
+	#define FAUST_ACTIVES 5
 	#define FAUST_PASSIVES 0
 
-	FAUST_ADDNUMENTRY("gain", fEntry1, 0.5f, 0.0f, 1.0f, 0.01f);
-	FAUST_ADDNUMENTRY("shift", fEntry0, 0.0f, -12.0f, 12.0f, 0.001f);
+	FAUST_ADDNUMENTRY("gain", fEntry4, 0.5f, 0.0f, 1.0f, 0.01f);
+	FAUST_ADDNUMENTRY("mode", fEntry0, 1.0f, 1.0f, 3.0f, 1.0f);
+	FAUST_ADDNUMENTRY("shift", fEntry1, 1.0f, -2e+01f, 2e+01f, 0.001f);
+	FAUST_ADDNUMENTRY("window", fEntry2, 1e+02f, 1e+01f, 1e+04f, 1e+01f);
+	FAUST_ADDNUMENTRY("xfade", fEntry3, 1e+01f, 1.0f, 1e+03f, 1.0f);
 
 	#define FAUST_LIST_ACTIVES(p) \
-		p(NUMENTRY, gain, "gain", fEntry1, 0.5f, 0.0f, 1.0f, 0.01f) \
-		p(NUMENTRY, shift, "shift", fEntry0, 0.0f, -12.0f, 12.0f, 0.001f) \
+		p(NUMENTRY, gain, "gain", fEntry4, 0.5f, 0.0f, 1.0f, 0.01f) \
+		p(NUMENTRY, mode, "mode", fEntry0, 1.0f, 1.0f, 3.0f, 1.0f) \
+		p(NUMENTRY, shift, "shift", fEntry1, 1.0f, -2e+01f, 2e+01f, 0.001f) \
+		p(NUMENTRY, window, "window", fEntry2, 1e+02f, 1e+01f, 1e+04f, 1e+01f) \
+		p(NUMENTRY, xfade, "xfade", fEntry3, 1e+01f, 1.0f, 1e+03f, 1.0f) \
 
 	#define FAUST_LIST_PASSIVES(p) \
 
