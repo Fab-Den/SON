@@ -12,7 +12,5 @@ To use the GUI in order to change these parameters you need to install the Proce
 ## Code description
 The root of this repository contains :
 * *programme_faust* the arduino sketch folder that includes the arduino code to upload on the teensy and the library compiled from the Faust Program (named Shifter)  
-    program description
 * *Shifter.dsp* the faust code we use in the project  
-    program description
 * a pdf of our presentation poster
