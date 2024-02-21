@@ -7,7 +7,7 @@ To replicate the specific sound usually associated with an 'auto-tune', a digita
 
 ## Using the Auto-tune on the Teensy
 After uploading the programme_faust.ino program on the Teensy (nested in the programme_faust folder), you will be able to test the default output of our auto-tune using a microphone and earphones. The default output is with smoothing on, reverb off, and chords off (so the output should be the just one transposition of the input sound).  
-To use the GUI in order to change these parameters you need to install blablablablabla.  
+To use the GUI in order to change these parameters you need to install the Processing software along with its ControlP5 library. You can then run the *GUI_ProjetSon.pde* in Processing. You'll probably need to adjust the port. Replace ```COM3``` with whatever port you are using and it should work perfectly.
 
 ## Code description
 The root of this repository contains :
